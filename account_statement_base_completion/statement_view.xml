@@ -66,6 +66,7 @@
                      <field name="sequence"/>
                      <field name="name" select="1" />
                      <field name="function_to_call"/>
+                     <field name="overwrite_completion" />
                      <separator colspan="4" string="Related Profiles"/>
                      <field name="profile_ids" nolabel="1" colspan="4"/>
                  </form>

@@ -100,6 +100,8 @@ class AccountStatementProfil(orm.Model):
                 cr, uid, line['profile_id'], context=context)
         rule_obj = self.pool.get('account.statement.completion.rule')
         for call in calls:
+            if line.get('already_completed') and not call.overwrite_completion:
+                continue
             method_to_call = getattr(rule_obj, call.function_to_call)
             if len(inspect.getargspec(method_to_call).args) == 6:
                 result = method_to_call(cr, uid, call.id, line, context)
@@ -151,6 +153,12 @@ class AccountStatementCompletionRule(orm.Model):
             rel='as_rul_st_prof_rel',
             string='Related statement profiles'),
         'function_to_call': fields.selection(__get_functions, 'Method'),
+        'overwrite_completion': fields.boolean(
+            'Allow completion to overwrite already completed lines',
+            help=("When checked, the statement completion "
+                  "ignores and overwrite already completed lines. It allows "
+                  "to run adaptive completion rules several times until the "
+                  "result is correct")),
     }
 
     def _find_invoice(self, cr, uid, st_line, inv_type, context=None):
@@ -391,7 +399,7 @@ class AccountStatementLine(orm.Model):
     it.
     """
     _inherit = "account.bank.statement.line"
-    _order = "already_completed desc, date asc"
+    _order = "already_completed desc, statement_id desc, sequence, date asc, id"
 
     _columns = {
         'additionnal_bank_fields': fields.serialized(
@@ -429,8 +437,6 @@ class AccountStatementLine(orm.Model):
             'account_id': 489L}}
         """
         profile_obj = self.pool['account.statement.profile']
-        if line.get('already_completed'):
-            return {}
         # Ask the rule
         vals = profile_obj._find_values_from_rules(
             cr, uid, rules, line, context)

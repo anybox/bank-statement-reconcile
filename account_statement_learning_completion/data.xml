@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <record id="bank_statement_completion_learning" model="account.statement.completion.rule">
+            <field name="name">Match using Machine Learning</field>
+            <field name="sequence">150</field>
+            <field name="function_to_call">get_from_prediction</field>
+        </record>
+
+    </data>
+</openerp>
