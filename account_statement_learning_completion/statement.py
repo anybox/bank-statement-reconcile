@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 ###############################################################################
 #                                                                             #
-#   Author: Joel Grand-Guillaume                                              #
-#   Copyright 2011-2012 Camptocamp SA                                         #
-#                                                                             #
-#   Author: Leonardo Pistone <leonardo.pistone@camptocamp.com>                #
-#   Copyright 2013 Camptocamp SA                                              #
+#   Author: Christophe Combelles                                              #
+#   Copyright 2015 Anybox                                                     #
 #                                                                             #
 #   This program is free software: you can redistribute it and/or modify      #
 #   it under the terms of the GNU Affero General Public License as            #
@@ -40,10 +37,9 @@ class AccountStatementCompletionRule(orm.Model):
         )
         return res
 
-    # Should be private but data are initialised with no update XML
     def get_from_prediction(self, cr, uid, st_line, context=None):
         """
-        Match the partner based on the last N partner matchings
+        Match the partner based on the last N partner matchings and the partner database
 
         :param int/long st_line: read of the concerned
         account.bank.statement.line
@@ -63,11 +59,12 @@ class AccountStatementCompletionRule(orm.Model):
                    'from account_bank_statement_line where partner_id is not NULL '
                    'order by date desc, id limit 1000;')
 
-        # construct the dataset and put input data at the end
+        # construct the dataset from existing statements
         st_line['additionnal_bank_fields'] = json.dumps(st_line['additionnal_bank_fields'])
         dataset = [(r['name'].upper() or '',
                    r['partner_id'])
                    for r in cr.dictfetchall()]
+        # add existing partner names in the dataset to improve prediction bootstrapping
         cr.execute('select id, name from res_partner where is_company=true')
         dataset += [(r['name'].upper() or '',
                     r['id'])
@@ -75,6 +72,7 @@ class AccountStatementCompletionRule(orm.Model):
         if len(dataset) <= 3:
             return {}
         vectorizer = CountVectorizer(min_df=0, analyzer='char', ngram_range=(3, 3))
+        # fit and transform the dataset into a training vector
         training_vector = vectorizer.fit_transform([d[0] for d in dataset]
                                                    + [st_line['name'].upper()])
         classifier = svm.LinearSVC()
